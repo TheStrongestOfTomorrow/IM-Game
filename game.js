@@ -7,7 +7,7 @@ let projectiles = [];
 let particles = [];
 let currentArmor = 'mark3';
 let energy = 100;
-let velocity = new THREE.Vector3();
+let velocity;
 let isFlying = false;
 
 const ARMORS = {
@@ -19,10 +19,99 @@ const ARMORS = {
 };
 
 const keys = {};
-const mouse = new THREE.Vector2();
+let mouse;
 
-init();
-animate();
+// Wait for THREE to be loaded before initializing
+if (typeof THREE === 'undefined') {
+    console.error('Three.js not loaded! Check your internet connection or script order.');
+} else {
+    velocity = new THREE.Vector3();
+    mouse = new THREE.Vector2();
+    init();
+    animate();
+}
+
+// Expose startGame function globally
+window.startGame = function() {
+    document.getElementById('title-screen').classList.add('hidden');
+    document.getElementById('loading-screen').classList.remove('hidden');
+    
+    setTimeout(() => {
+        document.getElementById('loading-screen').classList.add('hidden');
+        if (typeof init === 'function' && typeof THREE !== 'undefined') {
+            init();
+            animate();
+        }
+    }, 1500);
+};
+
+window.fireRepulsor = function() {
+    if (!player || energy < 5) return;
+    energy -= 5;
+    updateEnergyUI();
+    
+    const projectileGeo = new THREE.SphereGeometry(0.5, 16, 16);
+    const projectileMat = new THREE.MeshBasicMaterial({ 
+        color: 0xff0000,
+        transparent: true,
+        opacity: 0.9
+    });
+    
+    const projectile = new THREE.Mesh(projectileGeo, projectileMat);
+    projectile.position.copy(player.position);
+    projectile.position.y -= 1;
+    
+    const direction = new THREE.Vector3();
+    camera.getWorldDirection(direction);
+    
+    projectile.userData.velocity = direction.multiplyScalar(2);
+    projectile.userData.life = 60;
+    
+    scene.add(projectile);
+    projectiles.push(projectile);
+    
+    const light = new THREE.PointLight(0xff0000, 3, 10);
+    projectile.add(light);
+};
+
+window.fireUnibeam = function() {
+    if (!player || energy < 20) return;
+    energy -= 20;
+    updateEnergyUI();
+    
+    const beamGeo = new THREE.CylinderGeometry(0.5, 2, 50, 16);
+    const beamMat = new THREE.MeshBasicMaterial({ 
+        color: 0x00ffff,
+        transparent: true,
+        opacity: 0.8
+    });
+    
+    const beam = new THREE.Mesh(beamGeo, beamMat);
+    beam.position.copy(player.position);
+    beam.position.z += 2;
+    
+    const direction = new THREE.Vector3();
+    camera.getWorldDirection(direction);
+    
+    beam.lookAt(player.position.clone().add(direction));
+    beam.userData.life = 10;
+    beam.userData.isBeam = true;
+    
+    scene.add(beam);
+    projectiles.push(beam);
+    
+    const flash = new THREE.PointLight(0x00ffff, 10, 100);
+    flash.position.copy(player.position);
+    scene.add(flash);
+    setTimeout(() => scene.remove(flash), 100);
+};
+
+window.boost = function() {
+    if (player) {
+        velocity.y += 2;
+        createParticle(player.position.clone(), 0x00ffff, 20);
+    }
+};
 
 function init() {
     // Scene setup
@@ -240,37 +329,36 @@ function generateCity() {
 }
 
 function setupUI() {
-    const ui = document.createElement('div');
-    ui.id = 'ui';
-    ui.innerHTML = `
-        <div style="position: absolute; top: 20px; left: 20px; color: white; font-family: Arial; z-index: 100;">
-            <h1 style="margin: 0; text-shadow: 2px 2px 4px black;">IRONMAN SANDBOX</h1>
-            <div style="margin-top: 10px;">
-                <label>Armor: </label>
-                <select id="armorSelect" style="padding: 5px; background: rgba(0,0,0,0.7); color: white; border: 1px solid #444;">
-                    ${Object.entries(ARMORS).map(([key, data]) => 
-                        `<option value="${key}">${data.name}</option>`
-                    ).join('')}
-                </select>
-            </div>
-            <div style="margin-top: 10px;">
-                <div>Energy: <span id="energyVal">100</span>%</div>
-                <div style="width: 200px; height: 20px; background: #333; border: 2px solid #666; margin-top: 5px;">
-                    <div id="energyBar" style="width: 100%; height: 100%; background: linear-gradient(90deg, #00ffff, #0088ff); transition: width 0.2s;"></div>
-                </div>
-            </div>
-            <div style="margin-top: 15px; font-size: 12px; opacity: 0.8;">
-                WASD: Move | SPACE: Up | SHIFT: Down<br>
-                Click: Repulsor | E: Unibeam | R: Reset
-            </div>
-        </div>
-    `;
-    document.body.appendChild(ui);
+    const armorButtons = document.querySelectorAll('.armor-btn');
+    armorButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            armorButtons.forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            currentArmor = e.target.dataset.armor;
+            updatePlayerArmor();
+        });
+    });
+}
+
+function updatePlayerArmor() {
+    if (!player || !ARMORS[currentArmor]) return;
     
-    document.getElementById('armorSelect').addEventListener('change', (e) => {
-        currentArmor = e.target.value;
-        scene.remove(player);
-        createPlayer();
+    const armorData = ARMORS[currentArmor];
+    
+    // Update stats display
+    document.getElementById('speed-stat').textContent = Math.round(armorData.speed * 100) + '%';
+    document.getElementById('power-stat').textContent = Math.round(armorData.power * 100) + '%';
+    document.getElementById('defense-stat').textContent = Math.round(armorData.defense * 100) + '%';
+    
+    // Update player colors
+    player.children.forEach(child => {
+        if (child.material) {
+            if (child.userData.isPrimary) {
+                child.material.color.setHex(armorData.color);
+            } else if (child.userData.isAccent) {
+                child.material.color.setHex(armorData.accent);
+            }
+        }
     });
 }
 
@@ -492,11 +580,9 @@ function updateParticles() {
 }
 
 function updateEnergyUI() {
-    const bar = document.getElementById('energyBar');
-    const val = document.getElementById('energyVal');
-    if (bar && val) {
-        bar.style.width = energy + '%';
-        val.textContent = Math.floor(energy);
+    const fill = document.getElementById('energy-fill');
+    if (fill) {
+        fill.style.width = energy + '%';
     }
 }
 
