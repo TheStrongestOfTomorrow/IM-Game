@@ -48,7 +48,7 @@ A free-to-play sandbox game inspired by Roblox's Ironman games where you can tes
 ### Play Online
 The game is automatically deployed to GitHub Pages. Visit:
 ```
-https://<your-username>.github.io/<repo-name>/
+https://thestrongestoftomorrow.github.io/IM-Game/
 ```
 
 ### Auto-Deployment
@@ -59,7 +59,7 @@ Every push to `main` or `master` branch triggers automatic deployment to the `gh
 2. Add a new repository secret named `GITHUB_PAT` with your GitHub Personal Access Token
 3. The workflow will automatically deploy to the `gh-pages` branch on every push
 
-Your game will be live at: `https://<your-username>.github.io/<repo-name>/`
+Your game is live at: `https://thestrongestoftomorrow.github.io/IM-Game/`
 
 ### Local Development
 1. Clone the repository:
