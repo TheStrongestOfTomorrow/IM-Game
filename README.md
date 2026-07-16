@@ -51,6 +51,16 @@ The game is automatically deployed to GitHub Pages. Visit:
 https://<your-username>.github.io/<repo-name>/
 ```
 
+### Auto-Deployment
+Every push to `main` or `master` branch triggers automatic deployment to the `gh-pages` branch using your **GITHUB_PAT** secret.
+
+#### Setup Instructions:
+1. Go to your repository **Settings** → **Secrets and variables** → **Actions**
+2. Add a new repository secret named `GITHUB_PAT` with your GitHub Personal Access Token
+3. The workflow will automatically deploy to the `gh-pages` branch on every push
+
+Your game will be live at: `https://<your-username>.github.io/<repo-name>/`
+
 ### Local Development
 1. Clone the repository:
 ```bash

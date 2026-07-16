@@ -7,33 +7,39 @@ on:
       - master
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
-
 jobs:
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          fetch-depth: 0
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Deploy to gh-pages branch
+        env:
+          GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
+        run: |
+          # Clone the repo to a temp directory with gh-pages branch
+          git clone --depth=1 --branch=gh-pages \
+            https://x-access-token:${GITHUB_PAT}@github.com/${{ github.repository }}.git gh-pages-build 2>/dev/null || \
+          git clone --depth=1 https://x-access-token:${GITHUB_PAT}@github.com/${{ github.repository }}.git gh-pages-build
+
+          cd gh-pages-build
+
+          # Copy all game files
+          cp -r ../index.html ../game.js ../README.md ./ 2>/dev/null || true
+
+          # Add, commit and push
+          git add -A
+          if ! git diff --staged --quiet; then
+            git commit -m "Deploy game from commit ${{ github.sha }}"
+            git push origin gh-pages
+          else
+            echo "No changes to deploy"
+          fi
