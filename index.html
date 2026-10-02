@@ -3,18 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IronMan: Sandbox Experience</title>
+    <title>IronMan: Modular Sandbox Experience</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            user-select: none;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             overflow: hidden;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: #0a0f1d;
+            color: #fff;
         }
 
         #game-container {
@@ -36,127 +38,429 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
+            z-index: 10;
         }
 
         .hud-panel {
             position: absolute;
-            background: rgba(10, 20, 40, 0.85);
-            border: 2px solid #ffd700;
-            border-radius: 10px;
-            padding: 15px;
-            color: #fff;
+            background: rgba(8, 16, 32, 0.85);
+            border: 2px solid #00f0ff;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3), inset 0 0 10px rgba(0, 240, 255, 0.2);
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: #e0f7fc;
             pointer-events: auto;
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(8px);
         }
 
-        #armor-selector {
-            top: 20px;
-            left: 20px;
-            width: 250px;
+        /* Top HUD Bar */
+        #top-hud {
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: rgba(6, 12, 24, 0.9);
+            border-color: #ffd700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
         }
 
-        #stats-panel {
-            top: 20px;
+        .status-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 120px;
+        }
+
+        .status-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #ffd700;
+            margin-bottom: 4px;
+        }
+
+        .bar-container {
+            width: 100%;
+            height: 14px;
+            background: #112233;
+            border: 1px solid #00f0ff;
+            border-radius: 7px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar-fill {
+            height: 100%;
+            width: 100%;
+            transition: width 0.2s ease-out;
+        }
+
+        #health-fill { background: linear-gradient(90deg, #ff2200, #ff8800); }
+        #integrity-fill { background: linear-gradient(90deg, #0088ff, #00ffcc); }
+        #energy-fill { background: linear-gradient(90deg, #ffd700, #ffff00); }
+
+        .bar-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 10px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 0 4px #000;
+        }
+
+        /* Boss Bar */
+        #boss-hud {
+            top: 75px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 500px;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            border-color: #ff0055;
+            box-shadow: 0 0 25px rgba(ff, 0, 85, 0.6);
+        }
+
+        #boss-name {
+            font-size: 14px;
+            font-weight: bold;
+            color: #ff3366;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        /* Mode & Jarvis Indicator */
+        #jarvis-status-panel {
+            top: 15px;
+            left: 15px;
+            width: 220px;
+            font-size: 12px;
+        }
+
+        .jarvis-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #00ffff;
+            font-weight: bold;
+            letter-spacing: 1.5px;
+            margin-bottom: 6px;
+        }
+
+        .jarvis-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #00ffcc;
+            box-shadow: 0 0 8px #00ffcc;
+            animation: pulse-dot 1s infinite alternate;
+        }
+
+        @keyframes pulse-dot {
+            from { opacity: 0.4; }
+            to { opacity: 1; transform: scale(1.2); }
+        }
+
+        /* Minimap Radar */
+        #minimap-container {
+            bottom: 20px;
             right: 20px;
-            width: 200px;
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid #00f0ff;
+            background: rgba(0, 20, 40, 0.85);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+            position: absolute;
+            pointer-events: auto;
         }
 
-        #controls-help {
+        #minimap-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Prompt Overlay */
+        #interaction-prompt {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 240, 255, 0.2);
+            border: 2px solid #00f0ff;
+            color: #fff;
+            padding: 10px 24px;
+            border-radius: 20px;
+            font-size: 16px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-shadow: 0 0 10px #00f0ff;
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
+            display: none;
+            animation: bounce-prompt 1.2s infinite alternate;
+        }
+
+        @keyframes bounce-prompt {
+            from { transform: translate(-50%, 0); }
+            to { transform: translate(-50%, -8px); }
+        }
+
+        /* Controls Help Quick Bar */
+        #controls-bar {
             bottom: 20px;
             left: 20px;
             font-size: 12px;
-            opacity: 0.8;
+            line-height: 1.6;
         }
 
-        h3 {
-            color: #ffd700;
-            margin-bottom: 10px;
-            font-size: 16px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        .armor-btn {
-            width: 100%;
-            padding: 10px;
-            margin: 5px 0;
-            background: linear-gradient(135deg, #c41e3a 0%, #8b0000 100%);
-            border: 1px solid #ffd700;
-            color: white;
-            cursor: pointer;
-            border-radius: 5px;
-            transition: all 0.3s;
-            font-weight: bold;
-        }
-
-        .armor-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
-        }
-
-        .armor-btn.active {
-            background: linear-gradient(135deg, #ffd700 0%, #ff8c00 100%);
+        .key-badge {
+            background: #00f0ff;
             color: #000;
-        }
-
-        .stat-row {
-            display: flex;
-            justify-content: space-between;
-            margin: 8px 0;
-            font-size: 14px;
-        }
-
-        .stat-value {
-            color: #ffd700;
+            padding: 2px 6px;
+            border-radius: 4px;
             font-weight: bold;
+            margin-right: 4px;
         }
 
-        #energy-bar {
-            width: 100%;
-            height: 20px;
-            background: #333;
-            border-radius: 10px;
-            overflow: hidden;
-            margin-top: 5px;
-        }
-
-        #energy-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #00ff00, #ffd700);
-            width: 100%;
-            transition: width 0.3s;
-        }
-
-        #action-buttons {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            pointer-events: auto;
-        }
-
-        .action-btn {
-            width: 60px;
-            height: 60px;
-            margin: 5px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #c41e3a 0%, #8b0000 100%);
-            border: 2px solid #ffd700;
-            color: white;
-            font-size: 24px;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
+        /* Suit Selection Modal Menu */
+        #suit-menu-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(4, 10, 20, 0.88);
+            backdrop-filter: blur(12px);
+            z-index: 500;
+            display: none;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
         }
 
-        .action-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 0 30px rgba(255, 215, 0, 0.7);
+        #suit-menu-modal.active {
+            display: flex;
         }
 
-        .action-btn:active {
-            transform: scale(0.95);
+        .modal-title {
+            font-size: 32px;
+            color: #ffd700;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            text-shadow: 0 0 20px #ffd700;
+            margin-bottom: 25px;
+        }
+
+        .suit-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 180px);
+            gap: 15px;
+            max-width: 850px;
+        }
+
+        .suit-card {
+            background: rgba(12, 24, 48, 0.9);
+            border: 2px solid #00f0ff;
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+
+        .suit-card:hover {
+            transform: translateY(-6px) scale(1.04);
+            border-color: #ffd700;
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
+            background: rgba(20, 40, 80, 0.95);
+        }
+
+        .suit-card.legion-card {
+            grid-column: span 4;
+            border-color: #ff0055;
+            background: linear-gradient(135deg, rgba(40, 0, 20, 0.9), rgba(80, 0, 40, 0.9));
+        }
+
+        .suit-card.legion-card:hover {
+            border-color: #ff3388;
+            box-shadow: 0 0 30px rgba(255, 0, 85, 0.8);
+        }
+
+        .suit-icon {
+            font-size: 36px;
+            margin-bottom: 8px;
+        }
+
+        .suit-name {
+            font-weight: bold;
+            font-size: 15px;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .suit-desc {
+            font-size: 11px;
+            color: #a0d8ef;
+            text-align: center;
+        }
+
+        /* Settings Overlay */
+        #settings-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            padding: 8px 16px;
+            background: rgba(10, 20, 40, 0.9);
+            border: 2px solid #00f0ff;
+            border-radius: 6px;
+            color: #00f0ff;
+            cursor: pointer;
+            font-weight: bold;
+            pointer-events: auto;
+            transition: all 0.2s;
+        }
+
+        #settings-btn:hover {
+            background: #00f0ff;
+            color: #000;
+            box-shadow: 0 0 15px #00f0ff;
+        }
+
+        #settings-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(4, 10, 20, 0.88);
+            backdrop-filter: blur(10px);
+            z-index: 600;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #settings-modal.active {
+            display: flex;
+        }
+
+        .settings-card {
+            background: rgba(10, 20, 40, 0.95);
+            border: 2px solid #ffd700;
+            border-radius: 12px;
+            padding: 30px;
+            width: 400px;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 18px 0;
+            font-size: 15px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            display: inline-block;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #334455;
+            transition: .3s;
+            border-radius: 26px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #00f0ff;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+
+        /* Title & Loading Screen */
+        #title-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, #1a2636 0%, #080d1a 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+
+        #title-screen.hidden { display: none; }
+
+        .game-title {
+            font-size: 64px;
+            color: #ffd700;
+            letter-spacing: 12px;
+            text-shadow: 0 0 30px #ffd700, 0 0 60px #ff8c00;
+            margin-bottom: 10px;
+        }
+
+        .game-subtitle {
+            font-size: 20px;
+            color: #00ffff;
+            letter-spacing: 6px;
+            margin-bottom: 40px;
+        }
+
+        .start-btn {
+            padding: 18px 50px;
+            font-size: 22px;
+            background: linear-gradient(135deg, #c41e3a 0%, #8b0000 100%);
+            border: 3px solid #ffd700;
+            color: white;
+            cursor: pointer;
+            border-radius: 10px;
+            letter-spacing: 4px;
+            transition: all 0.3s;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+        }
+
+        .start-btn:hover {
+            transform: scale(1.08);
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.8);
         }
 
         #loading-screen {
@@ -165,7 +469,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: #080d1a;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -196,129 +500,212 @@
         .loading-text {
             color: #ffd700;
             margin-top: 30px;
-            font-size: 24px;
-            text-transform: uppercase;
-            letter-spacing: 5px;
+            font-size: 20px;
+            letter-spacing: 4px;
         }
 
-        #title-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #0a0f1a 0%, #1a1a2e 100%);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 999;
-        }
-
-        #title-screen.hidden {
-            display: none;
-        }
-
-        .game-title {
-            font-size: 72px;
-            color: #ffd700;
-            text-transform: uppercase;
-            letter-spacing: 15px;
-            text-shadow: 0 0 30px #ffd700, 0 0 60px #ff8c00;
-            margin-bottom: 20px;
-        }
-
-        .game-subtitle {
-            font-size: 24px;
+        /* JARVIS Subtitle Log */
+        #jarvis-subtitle {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 15, 30, 0.85);
+            border: 1px solid #00f0ff;
+            border-radius: 15px;
+            padding: 8px 20px;
             color: #00ffff;
-            letter-spacing: 8px;
-            margin-bottom: 50px;
-        }
-
-        .start-btn {
-            padding: 20px 60px;
-            font-size: 24px;
-            background: linear-gradient(135deg, #c41e3a 0%, #8b0000 100%);
-            border: 3px solid #ffd700;
-            color: white;
-            cursor: pointer;
-            border-radius: 10px;
-            text-transform: uppercase;
-            letter-spacing: 5px;
-            transition: all 0.3s;
-        }
-
-        .start-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 0 50px rgba(255, 215, 0, 0.8);
+            font-size: 14px;
+            letter-spacing: 1px;
+            text-align: center;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+            pointer-events: none;
+            transition: opacity 0.3s;
         }
     </style>
 </head>
 <body>
     <div id="title-screen">
-        <h1 class="game-title">IRONMAN</h1>
-        <p class="game-subtitle">SANDBOX EXPERIENCE</p>
-        <button class="start-btn" onclick="startGame()">ENTER SUIT</button>
+        <h1 class="game-title">IRON MAN</h1>
+        <p class="game-subtitle">MODULAR HERO SANDBOX</p>
+        <button class="start-btn" onclick="startGame()">START ADVENTURE</button>
     </div>
 
     <div id="loading-screen" class="hidden">
         <div class="arc-reactor"></div>
-        <p class="loading-text">Initializing Arc Reactor...</p>
+        <p class="loading-text">CALIBRATING SUIT SYSTEMS...</p>
     </div>
 
     <div id="game-container">
         <canvas id="canvas"></canvas>
+
         <div id="ui-overlay">
-            <div id="armor-selector" class="hud-panel">
-                <h3>Armor Select</h3>
-                <button class="armor-btn active" data-armor="mark3">Mark III</button>
-                <button class="armor-btn" data-armor="mark42">Mark XLII</button>
-                <button class="armor-btn" data-armor="hulkbuster">Hulkbuster</button>
-                <button class="armor-btn" data-armor="bleeding">Bleeding Edge</button>
-                <button class="armor-btn" data-armor="stealth">Stealth Suit</button>
+            <!-- Settings Toggle Button -->
+            <button id="settings-btn" onclick="toggleSettingsModal()">⚙ SETTINGS</button>
+
+            <!-- Top HUD Bar -->
+            <div id="top-hud" class="hud-panel">
+                <div class="status-box">
+                    <span class="status-title">TONY HEALTH</span>
+                    <div class="bar-container">
+                        <div id="health-fill" class="bar-fill"></div>
+                        <span id="health-text" class="bar-text">100 / 100</span>
+                    </div>
+                </div>
+
+                <div class="status-box">
+                    <span class="status-title">SUIT INTEGRITY</span>
+                    <div class="bar-container">
+                        <div id="integrity-fill" class="bar-fill"></div>
+                        <span id="integrity-text" class="bar-text">SUITED: 100%</span>
+                    </div>
+                </div>
+
+                <div class="status-box">
+                    <span class="status-title">ARC ENERGY</span>
+                    <div class="bar-container">
+                        <div id="energy-fill" class="bar-fill"></div>
+                        <span id="energy-text" class="bar-text">100 / 100</span>
+                    </div>
+                </div>
             </div>
 
-            <div id="stats-panel" class="hud-panel">
-                <h3>Suit Status</h3>
-                <div class="stat-row">
-                    <span>Speed:</span>
-                    <span class="stat-value" id="speed-stat">85%</span>
-                </div>
-                <div class="stat-row">
-                    <span>Power:</span>
-                    <span class="stat-value" id="power-stat">95%</span>
-                </div>
-                <div class="stat-row">
-                    <span>Defense:</span>
-                    <span class="stat-value" id="defense-stat">90%</span>
-                </div>
-                <p style="margin-top: 15px;">Energy:</p>
-                <div id="energy-bar">
-                    <div id="energy-fill"></div>
+            <!-- Boss Health Bar -->
+            <div id="boss-hud" class="hud-panel">
+                <span id="boss-name">TITAN MECH COMMANDER</span>
+                <div class="bar-container" style="height: 18px; width: 100%;">
+                    <div id="boss-health-fill" class="bar-fill" style="background: linear-gradient(90deg, #ff0055, #ff6600);"></div>
+                    <span id="boss-health-text" class="bar-text">1000 / 1000</span>
                 </div>
             </div>
 
-            <div id="controls-help" class="hud-panel">
-                <h3>Controls</h3>
-                <p>WASD / Arrows - Move</p>
-                <p>SPACE - Fly Up</p>
-                <p>SHIFT - Fly Down</p>
-                <p>CLICK - Repulsor Blast</p>
-                <p>E - Unibeam</p>
-                <p>R - Reset Position</p>
+            <!-- JARVIS Status & State -->
+            <div id="jarvis-status-panel" class="hud-panel">
+                <div class="jarvis-header">
+                    <div class="jarvis-indicator"></div>
+                    <span>J.A.R.V.I.S. ACTIVE</span>
+                </div>
+                <div id="suit-state-text" style="color: #ffd700; margin-bottom: 4px;">Form: Tony Stark</div>
+                <div id="hero-score-text" style="color: #00ffcc;">Hero Score: 0</div>
             </div>
 
-            <div id="action-buttons">
-                <button class="action-btn" onclick="fireRepulsor()" title="Repulsor">⚡</button>
-                <button class="action-btn" onclick="fireUnibeam()" title="Unibeam">💥</button>
-                <button class="action-btn" onclick="boost()" title="Boost">🚀</button>
+            <!-- JARVIS Voice Subtitles -->
+            <div id="jarvis-subtitle">JARVIS: All systems online, Mr. Stark.</div>
+
+            <!-- Interaction Prompt -->
+            <div id="interaction-prompt">PRESS [Q] TO ENTER SUIT</div>
+
+            <!-- Controls Quick Guide -->
+            <div id="controls-bar" class="hud-panel">
+                <p><span class="key-badge">WASD</span> Move | <span class="key-badge">SHIFT</span> Sprint/Boost</p>
+                <p><span class="key-badge">G</span> Suit Menu | <span class="key-badge">F</span> Toggle Flight</p>
+                <p><span class="key-badge">Q/E</span> Repulsors | <span class="key-badge">Z</span> Missiles</p>
+                <p><span class="key-badge">N</span> Eject Suit | <span class="key-badge">X</span> Self-Destruct</p>
             </div>
+
+            <!-- Minimap Canvas -->
+            <div id="minimap-container">
+                <canvas id="minimap-canvas" width="160" height="160"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Suit Selection Modal Menu -->
+    <div id="suit-menu-modal">
+        <h2 class="modal-title">STARK ARMORY SELECT</h2>
+        <div class="suit-grid">
+            <div class="suit-card" onclick="selectSuitCall('mark3')">
+                <div class="suit-icon">🦾</div>
+                <div class="suit-name">MARK III</div>
+                <div class="suit-desc">Classic Red & Gold. Gantry arm assembly.</div>
+            </div>
+            <div class="suit-card" onclick="selectSuitCall('mark42')">
+                <div class="suit-icon">⚡</div>
+                <div class="suit-name">MARK XLII</div>
+                <div class="suit-desc">Autonomous flying suit pieces snap on.</div>
+            </div>
+            <div class="suit-card" onclick="selectSuitCall('mark5')">
+                <div class="suit-icon">🧳</div>
+                <div class="suit-name">MARK V</div>
+                <div class="suit-desc">Briefcase armor delivered by Happy Hogan!</div>
+            </div>
+            <div class="suit-card" onclick="selectSuitCall('hulkbuster')">
+                <div class="suit-icon">🛡️</div>
+                <div class="suit-name">HULKBUSTER</div>
+                <div class="suit-desc">Heavy orbital drop pod armor. High defense.</div>
+            </div>
+            <div class="suit-card" onclick="selectSuitCall('bleeding')">
+                <div class="suit-icon">💎</div>
+                <div class="suit-name">BLEEDING EDGE</div>
+                <div class="suit-desc">Mark 50 fluid nanotech expansion.</div>
+            </div>
+            <div class="suit-card" onclick="selectSuitCall('stealth')">
+                <div class="suit-icon">🕶️</div>
+                <div class="suit-name">STEALTH SUIT</div>
+                <div class="suit-desc">Covert radar-absorbent matte armor.</div>
+            </div>
+            <div class="suit-card" onclick="selectSuitCall('warmachine')">
+                <div class="suit-icon">💣</div>
+                <div class="suit-name">WAR MACHINE</div>
+                <div class="suit-desc">Heavy artillery with shoulder gatling cannon.</div>
+            </div>
+            <div class="suit-card" onclick="selectSuitCall('mark1')">
+                <div class="suit-icon">⚙️</div>
+                <div class="suit-name">MARK I</div>
+                <div class="suit-desc">Original cave-forged iron alloy armor.</div>
+            </div>
+            <div class="suit-card legion-card" onclick="selectSuitCall('legion')">
+                <div class="suit-icon">🤖🤖🤖</div>
+                <div class="suit-name">ACTIVATE IRON LEGION</div>
+                <div class="suit-desc">Summon all suits as an autonomous bodyguard squad to follow & fight with you!</div>
+            </div>
+        </div>
+        <button style="margin-top: 25px; padding: 10px 30px; background: #334455; border: 1px solid #00f0ff; color: white; border-radius: 6px; cursor: pointer; font-weight: bold;" onclick="closeSuitMenuModal()">CANCEL [ESC]</button>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal">
+        <div class="settings-card">
+            <h3 style="color: #ffd700; margin-bottom: 20px; text-align: center; font-size: 20px;">SYSTEM CONFIGURATION</h3>
+
+            <div class="setting-row">
+                <span>JARVIS Auto-Combat Assist:</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-jarvis-assist" checked onchange="updateSettings()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-row">
+                <span>Baby Mode (Invincible & Auto-Lock):</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-baby-mode" onchange="updateSettings()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-row">
+                <span>JARVIS Voice Speech:</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-speech" checked onchange="updateSettings()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-row">
+                <span>Synthesized SFX:</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-sfx" checked onchange="updateSettings()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <button style="margin-top: 20px; width: 100%; padding: 12px; background: linear-gradient(135deg, #00f0ff, #0088ff); border: none; border-radius: 6px; color: #000; font-weight: bold; cursor: pointer;" onclick="toggleSettingsModal()">SAVE & CLOSE</button>
         </div>
     </div>
 
     <!-- Three.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    
     <script src="game.js"></script>
 </body>
 </html>
